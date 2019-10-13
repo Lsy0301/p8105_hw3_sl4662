@@ -238,12 +238,22 @@ accel =
   mutate(weekday = TRUE) %>% 
   select(week, day_id, day, weekday, everything()) %>% 
   mutate(weekday = replace(weekday, day == "Saturday"|day == "Sunday", FALSE))
+
+accel = 
+  pivot_longer(
+    accel, 
+    activity_1:activity_1440,
+    names_to = "min_day", 
+    values_to = "activity") %>% 
+  separate(min_day, into = c("n", "min"), sep="_") %>% 
+  mutate(min = as.numeric(min))
 ```
-In the Accelerometers dataset, we have a total of `r nrow(accel) ` obervations, and `r ncol(accel) ` variables.
 
-`activity.*` for every minutes are `r class(pull(accel, activity_1))` variables. 
+In the Accelerometers dataset, we have a total of `r nrow(accel) ` obervations, and `r ncol(accel)` variables.
 
-`weekday` is `r class(pull(accel, weekday))` variables. If `1`, then it is a weekday. If `0`, then is is a weekend. 
+`activity` for every minutes are `r class(pull(accel, activity))` variables. 
+
+`weekday` is `r class(pull(accel, weekday))` variables. If `TRUE`, then it is a weekday. If `FALSE`, then is is a weekend. 
 
 `day` is `r class(pull(accel, day))` variables. It contains `Monday` to `Sunday`. 
 
@@ -254,17 +264,24 @@ In the Accelerometers dataset, we have a total of `r nrow(accel) ` obervations, 
 ```{r, daily_activity}
 daily_activity = 
   accel %>% 
-  mutate(activity_total = rowSums(.[5:1444])) %>% 
-  select(week, day_id, day, weekday, activity_total)
+  group_by(week, day, weekday) %>% 
+  summarize(activity_total = sum(activity)) %>% 
+  pivot_wider(names_from = "week",
+  values_from = "activity_total") %>% 
+  rename(., week1_activity = "1", week2_activity = "2", week3_activity = "3", week4_activity = "4", week5_activity = "5")
 
 knitr::kable(daily_activity)
 ```
 
-Since there are two many data here, it is hard to see any trend. I furthur organized data using week number, weekday vs weekend and 7 weekdays parameters to get a clearer view. 
+It looks like that on Saturday during week 4 and week 5, there is significantly less activity compare to other days. 
+
+I also furthur organized data using week number, weekday vs weekend and 7 weekdays parameters to get a clearer view. 
 
 ```{r, analyze_activity}
 monday_to_sunday_activity =
-  daily_activity %>% 
+  accel %>% 
+  group_by(week, day, weekday) %>% 
+  summarize(activity_total = sum(activity)) %>% 
   group_by(day) %>% 
   summarize(daily_mean_activity = mean(activity_total))
 
@@ -272,7 +289,9 @@ knitr::kable(monday_to_sunday_activity)
 
 
 weekend_activity = 
-  daily_activity %>% 
+  accel %>% 
+  group_by(week, day, weekday) %>% 
+  summarize(activity_total = sum(activity)) %>% 
   group_by(weekday) %>% 
   summarize(weekday_weekend_mean_activity = mean(activity_total))
 
@@ -280,7 +299,9 @@ knitr::kable(weekend_activity)
 
 
 weekly_activity = 
-  daily_activity %>% 
+  accel %>% 
+  group_by(week, day, weekday) %>% 
+  summarize(activity_total = sum(activity)) %>% 
   group_by(week) %>% 
   summarize(weekly_mean_activity = mean(activity_total))
 
@@ -290,18 +311,7 @@ knitr::kable(weekly_activity)
 We can tell from the tables that this person has more activity on the weekdays compare to the weekends. In addition, there is very little activity during week 4 compare to week 1, 2, 3 and 5. Activities are highest during week 2 and 3. 
 
 ```{r, plot}
-accel_plot = 
-  pivot_longer(
-    accel, 
-    activity_1:activity_1440,
-    names_to = "min_day", 
-    values_to = "activity") %>% 
-  separate(min_day, into = c("n", "min"), sep="_") 
-
-accel_plot$min = as.numeric(accel_plot$min)
-
-
-ggplot(data = accel_plot, aes(x = min, y = activity, color = day)) + 
+ggplot(data = accel, aes(x = min, y = activity, color = day)) + 
   geom_line(aes(group = day_id), alpha = .1) +
   geom_smooth(se = FALSE) +
   theme(legend.position = "bottom") +
