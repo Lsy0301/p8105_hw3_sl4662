@@ -1,4 +1,4 @@
- ---
+---
 title: "p8105_hw3_sl4662"
 output: github_document
 editor_options: 
@@ -144,3 +144,63 @@ knitr::kable(apple_coffee)
 Both orders of pink lady apples and coffee ice cream are placed around noon to 3pm. 
 
 There are `r ncol(instacart)` variables in instacart data set, and `r nrow(instacart)` observations. This data set is based on each item from different orders and different times. For example, we can look at the first row. Bulgarian Yogurt has product id 49302, it is in order 1, and it is added to the cart first. It is the forth order being placed by user 112108 on Thursday. It has been 9 days since this user's prior order. This product belongs to aisle yogurt and department dairy eggs. 
+
+
+# Problem 2
+```{r, cleaning,  warning = FALSE}
+data("brfss_smart2010") 
+
+brfss = 
+  brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  filter(topic == "Overall Health") %>% 
+  drop_na(response) %>% 
+  mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"))) %>% 
+  arrange(response)
+
+location_2002 = 
+  brfss %>% 
+  filter(year == "2002") %>% 
+  distinct(locationdesc) %>% 
+  separate(locationdesc, into = c("state", "location"), sep="-") %>% 
+  count(state) %>% 
+  filter(n > 6) 
+
+location_2010 = 
+  brfss %>% 
+  filter(year == "2010") %>% 
+  distinct(locationdesc) %>% 
+  separate(locationdesc, into = c("state", "location"), sep="-") %>% 
+  count(state) %>% 
+  filter(n > 6)
+```
+
+In 2002, `r location_2002$state` were observed at 7 or more locations. 
+
+In 2010, `r location_2010$state` were observed at 7 or more locations. 
+
+More locations among states are being observed in 2010 compare to 2002. 
+
+```{r, health_plot}
+plot_data = 
+  brfss %>% 
+  filter(response == "Excellent") %>% 
+  select(year, locationabbr, response, data_value) %>% 
+  drop_na() %>% 
+  group_by(year, locationabbr) %>% 
+  summarise(mean_data_value = mean(data_value))
+  
+ggplot(data = plot_data, aes(x = year, y = mean_data_value, color = locationabbr)) + 
+  geom_line(aes(group = locationabbr)) +
+  geom_text(aes(label = locationabbr),
+            size = 2) +
+  theme(legend.position = "right") +
+  labs(
+    color = "Location",
+    title = "Excellent Responses Data Value over Time",
+    x = "Year",
+    y = "Average Data Value")
+  
+```
+
+State WV has the lowest average data value among all sates. Overall, the average data value decreased a little from year 2002 to 2010. 
