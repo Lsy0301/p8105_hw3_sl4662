@@ -228,3 +228,92 @@ ggplot(data = two_panel_data, aes(x = response, y = data_value, color = location
 ```
 
 The distribution for poor response is the lowest among other responses. Fair response has higher data values than poor response, but still low compare to the other three responses. Good, very good and excellent have similar data values. 
+
+
+# Problem 3
+```{r, read_accel}
+accel = 
+  read_csv("accel_data.csv") %>% 
+  janitor::clean_names() %>%
+  mutate(weekday = TRUE) %>% 
+  select(week, day_id, day, weekday, everything()) %>% 
+  mutate(weekday = replace(weekday, day == "Saturday"|day == "Sunday", FALSE))
+```
+In the Accelerometers dataset, we have a total of `r nrow(accel) ` obervations, and `r ncol(accel) ` variables.
+
+`activity.*` for every minutes are `r class(pull(accel, activity_1))` variables. 
+
+`weekday` is `r class(pull(accel, weekday))` variables. If `1`, then it is a weekday. If `0`, then is is a weekend. 
+
+`day` is `r class(pull(accel, day))` variables. It contains `Monday` to `Sunday`. 
+
+`day id`is `r class(pull(accel, day_id))` variables. It represents the number of days. 
+
+`week` is `r class(pull(accel, week))` variables. It represents the numebr of weeks. 
+
+```{r, daily_activity}
+daily_activity = 
+  accel %>% 
+  mutate(activity_total = rowSums(.[5:1444])) %>% 
+  select(week, day_id, day, weekday, activity_total)
+
+knitr::kable(daily_activity)
+```
+
+Since there are two many data here, it is hard to see any trend. I furthur organized data using week number, weekday vs weekend and 7 weekdays parameters to get a clearer view. 
+
+```{r, analyze_activity}
+monday_to_sunday_activity =
+  daily_activity %>% 
+  group_by(day) %>% 
+  summarize(daily_mean_activity = mean(activity_total))
+
+knitr::kable(monday_to_sunday_activity)
+
+
+weekend_activity = 
+  daily_activity %>% 
+  group_by(weekday) %>% 
+  summarize(weekday_weekend_mean_activity = mean(activity_total))
+
+knitr::kable(weekend_activity)
+
+
+weekly_activity = 
+  daily_activity %>% 
+  group_by(week) %>% 
+  summarize(weekly_mean_activity = mean(activity_total))
+
+knitr::kable(weekly_activity)
+```
+
+We can tell from the tables that this person has more activity on the weekdays compare to the weekends. In addition, there is very little activity during week 4 compare to week 1, 2, 3 and 5. Activities are highest during week 2 and 3. 
+
+```{r, plot}
+accel_plot = 
+  pivot_longer(
+    accel, 
+    activity_1:activity_1440,
+    names_to = "min_day", 
+    values_to = "activity") %>% 
+  separate(min_day, into = c("n", "min"), sep="_") 
+
+accel_plot$min = as.numeric(accel_plot$min)
+
+
+ggplot(data = accel_plot, aes(x = min, y = activity, color = day)) + 
+  geom_line(aes(group = day_id), alpha = .1) +
+  geom_smooth(se = FALSE) +
+  theme(legend.position = "bottom") +
+  scale_color_hue(h = c(100, 900)) +
+  labs(
+    color = "Day of Week",
+    title = "Daily Activity",
+    x = "Minutes",
+    y = "Activity") +
+  scale_x_continuous(
+    breaks = c(0, 480, 720, 1020, 1260), 
+    labels = c("12am", "8am", "12pm", "5pm", "9pm"))
+```
+
+From the plot, we can see that this person is generally more active on Friday nights around 9pm and Sunday Mornings around 11am. There is almost no activity from midnight to the morning, which means this person is resting from 12am to 7am. 
