@@ -1,4 +1,4 @@
----
+ ---
 title: "p8105_hw3_sl4662"
 output: github_document
 editor_options: 
@@ -11,4 +11,44 @@ library(tidyverse)
 library(ggridges)
 library(p8105.datasets)
 ```
+
+# Problem 1
+```{r, aisles_data}
+data("instacart")
+
+nrow(distinct(instacart,aisle_id))  # total number of aisles 
+
+instacart %>% 
+group_by(aisle) %>% 
+summarize(n = n()) %>% 
+filter(min_rank(desc(n))<2) # filter out only when rank = 1 (max)
+
+# mutate(ranking = min_rank(desc(n))) %>%  # rank aisle in max to min order
+
+```
+
+There are `r nrow(distinct(instacart,aisle_id))` aisles, and the most popular is fresh vegetables. 
+
+```{r, aisle_plot}
+aisle_count =
+  instacart %>% 
+  group_by(aisle) %>% 
+  summarize(n = n()) %>% 
+  filter(n > 10000) # aisles with more than 10000 items ordered
+  
+ggplot(aisle_count, aes(x = n, y = reorder(aisle, n))) +
+  geom_point(aes(color = aisle), alpha = .5) +  
+  scale_color_hue(h = c(300, 600)) +
+  scale_x_continuous(
+    breaks = c(10000, 20000, 40000, 80000, 150000)
+    ) +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
+  labs(
+    title = "Aisle Data",
+    x = "Number ordered",
+    y = "Aisle Types"
+  )
+```
+
+The most popular is fresh vegatibles. The second popular is fresh fruits. Both fresh vegatables and fruits are ordered aound 150000 times. The third popular is packaged vegatibles fruits, which is ordered around 80000 times. 
 
